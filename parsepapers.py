@@ -2,6 +2,7 @@ from pathlib import Path
 from pprint import pprint
 import re
 
+from jinja2 import Environment, PackageLoader, select_autoescape
 from requests_cache import CachedSession
 
 
@@ -53,7 +54,18 @@ r = session.get(
     params=payload,
 )
 
-pprint(r.json())
+
+rj = r.json()
+pprint(rj)
+
+# Jinja
+env = Environment(
+    loader=PackageLoader("parsepapers"),
+    autoescape=select_autoescape()
+)
+template = env.get_template("template.html")
+print(template.render(citation=rj))
+
 
 # TODO: decide between using citeproc-py or hand-formatting the response - maybe in a template?
 # citeproc-py process is a bit involved and focused on creating standard bibliographies (think LaTeX document)

@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Publications</title>
+</head>
+
+<body>
+
+  {% for author in citation.get("author") %}{{ author.get("family")}}, {{author.get("given") }}, {% endfor %}
+  {{ citation.get("title") }}
+
+</body>
