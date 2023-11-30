@@ -7,7 +7,9 @@
 
 <body>
 
-  {% for author in citation.get("author") %}{{ author.get("family")}}, {{author.get("given") }}, {% endfor %}
-  {{ citation.get("title") }}
+  {% for author in citation.get("author") %}
+    {% if author.get("family") in sfb_authors %}<b>{% endif %}{{ author.get("given") }} {{ author.get("family") }}, {% if author.get("family") in sfb_authors %}</b>{% endif %}
+  {% endfor %}
+  {{ citation.get("title") }}, {{ citation.get("container-title") }} {{ citation.get("issued").get("date-parts")[0][0] }}
 
 </body>

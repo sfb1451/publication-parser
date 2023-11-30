@@ -38,6 +38,11 @@ def read_file(fp):
 sample_input = Path("sample.txt")
 items = read_file(sample_input)
 
+# Read authors who are SFB authors, and should be displayed in bold
+# For now, just a set of last names
+authors_file = Path("sfb_authors.txt")
+sfb_authors = set(authors_file.read_text().rstrip().split("\n"))
+
 # Cache requests to avoid spamming Pubmed
 session = CachedSession('query_cache')
 
@@ -61,10 +66,14 @@ pprint(rj)
 # Jinja
 env = Environment(
     loader=PackageLoader("parsepapers"),
-    autoescape=select_autoescape()
+    autoescape=select_autoescape(),
+    trim_blocks=True,
+    lstrip_blocks=True,
 )
 template = env.get_template("template.html")
-print(template.render(citation=rj))
+Path("publications.html").write_text(
+    template.render(citation=rj, sfb_authors=sfb_authors)
+)
 
 
 # TODO: decide between using citeproc-py or hand-formatting the response - maybe in a template?
