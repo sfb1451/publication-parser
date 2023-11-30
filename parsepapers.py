@@ -46,22 +46,29 @@ sfb_authors = set(authors_file.read_text().rstrip().split("\n"))
 # Cache requests to avoid spamming Pubmed
 session = CachedSession('query_cache')
 
-# Request a CSL file
-payload = {
-    "format": "csl",
-    "contenttype": "json",
-    "id": find_id(items[0])
-}
+citations = []
 
-r = session.get(
-    url="https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/",
-    headers={"user-agent": "mslw-paper-parser/0.0.1"},
-    params=payload,
-)
+for item in items:
 
+    # Request a CSL file
+    payload = {
+        "format": "csl",
+        "contenttype": "json",
+        "id": find_id(item)
+    }
 
-rj = r.json()
-pprint(rj)
+    r = session.get(
+        url="https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/",
+        headers={"user-agent": "mslw-paper-parser/0.0.1"},
+        params=payload,
+    )
+
+    # todo: back off on error?
+    # we don't want to sleep when caching, only for real queries
+
+    rj = r.json()
+    citations.append(rj)
+    pprint(rj)
 
 # Jinja
 env = Environment(
@@ -72,7 +79,7 @@ env = Environment(
 )
 template = env.get_template("template.html")
 Path("publications.html").write_text(
-    template.render(citation=rj, sfb_authors=sfb_authors)
+    template.render(citations=citations, sfb_authors=sfb_authors)
 )
 
 
