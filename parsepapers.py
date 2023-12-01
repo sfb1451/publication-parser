@@ -33,6 +33,35 @@ def read_file(fp):
     return [i.replace("\n", " ") for i in items]
 
 
+def query_pubmed_ctxp(session, id_):
+    """Query Pubmed Literature Citation Exporter
+
+    Obtains a CSL json for a given PubMed id. Returns None if the
+    response is not ok.
+
+    See https://api.ncbi.nlm.nih.gov/lit/ctxp/
+
+    """
+    payload = {
+        "format": "csl",
+        "contenttype": "json",
+        "id": id_
+    }
+
+    r = session.get(
+        url="https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/",
+        headers={"user-agent": "mslw-paper-parser/0.0.1"},
+        params=payload,
+    )
+
+    # todo: back off on error?
+    # we don't want to sleep when caching, only for real queries
+
+    pprint(r.json())
+    if r.ok:
+        return r.json()
+
+
 # Read items from a file that contains a copy-paste of citation texts from e-mail
 # Items are delimited with a blank line
 sample_input = Path("sample.txt")
@@ -50,25 +79,10 @@ citations = []
 
 for item in items:
 
-    # Request a CSL file
-    payload = {
-        "format": "csl",
-        "contenttype": "json",
-        "id": find_id(item)
-    }
+    pmid = find_id(item, "pmid")
 
-    r = session.get(
-        url="https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/",
-        headers={"user-agent": "mslw-paper-parser/0.0.1"},
-        params=payload,
-    )
-
-    # todo: back off on error?
-    # we don't want to sleep when caching, only for real queries
-
-    rj = r.json()
-    citations.append(rj)
-    pprint(rj)
+    if pmid is not None:
+        citations.append(query_pubmed_ctxp(session, pmid))
 
 # Jinja
 env = Environment(
