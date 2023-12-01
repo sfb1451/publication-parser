@@ -117,6 +117,31 @@ def query_crossref(session, doi, email):
     if r.ok:
         pprint(r.json())
         return r.json().get("message")
+
+
+def query_doi_org(session, doi):
+    """Perform a doi query at doi.org
+
+    Queries doi.org about a given doi, using content negotiation to
+    request CSL json. This should get redirected to crossref,
+    datacite, or medra.
+
+    See: https://citation.crosscite.org/docs.html
+
+    """
+
+    r = session.get(
+        url = f"https://doi.org/{doi}",
+        headers={"Accept": "application/vnd.citationstyles.csl+json"},
+    )
+    # todo: include mailto header so that crossref lets us into polite pool
+    # https://www.crossref.org/documentation/retrieve-metadata/content-negotiation/
+
+    if r.ok:
+        pprint(r.json())
+        return r.json()
+
+
 if __name__ == "__main__":
     # Read items from a file that contains a copy-paste of citation texts from e-mail
     # Items are delimited with a blank line
@@ -154,7 +179,8 @@ if __name__ == "__main__":
                 pmid = known_ids.get("pmid")
                 citations.append(query_pubmed_ctxp(session, pmid))
             else:
-                citations.append(query_crossref(session, doi, email))
+                #citations.append(query_crossref(session, doi, email))
+                citations.append(query_doi_org(session, doi))
 
     # Jinja
     env = Environment(
