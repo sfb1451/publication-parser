@@ -62,39 +62,40 @@ def query_pubmed_ctxp(session, id_):
         return r.json()
 
 
-# Read items from a file that contains a copy-paste of citation texts from e-mail
-# Items are delimited with a blank line
-sample_input = Path("sample.txt")
-items = read_file(sample_input)
+if __name__ == "__main__":
+    # Read items from a file that contains a copy-paste of citation texts from e-mail
+    # Items are delimited with a blank line
+    sample_input = Path("sample.txt")
+    items = read_file(sample_input)
 
-# Read authors who are SFB authors, and should be displayed in bold
-# For now, just a set of last names
-authors_file = Path("sfb_authors.txt")
-sfb_authors = set(authors_file.read_text().rstrip().split("\n"))
+    # Read authors who are SFB authors, and should be displayed in bold
+    # For now, just a set of last names
+    authors_file = Path("sfb_authors.txt")
+    sfb_authors = set(authors_file.read_text().rstrip().split("\n"))
 
-# Cache requests to avoid spamming Pubmed
-session = CachedSession('query_cache')
+    # Cache requests to avoid spamming Pubmed
+    session = CachedSession('query_cache')
 
-citations = []
+    citations = []
 
-for item in items:
+    for item in items:
 
-    pmid = find_id(item, "pmid")
+        pmid = find_id(item, "pmid")
 
-    if pmid is not None:
-        citations.append(query_pubmed_ctxp(session, pmid))
+        if pmid is not None:
+            citations.append(query_pubmed_ctxp(session, pmid))
 
-# Jinja
-env = Environment(
-    loader=PackageLoader("parsepapers"),
-    autoescape=select_autoescape(),
-    trim_blocks=True,
-    lstrip_blocks=True,
-)
-template = env.get_template("template.html")
-Path("publications.html").write_text(
-    template.render(citations=citations, sfb_authors=sfb_authors)
-)
+    # Jinja
+    env = Environment(
+        loader=PackageLoader("parsepapers"),
+        autoescape=select_autoescape(),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    template = env.get_template("template.html")
+    Path("publications.html").write_text(
+        template.render(citations=citations, sfb_authors=sfb_authors)
+    )
 
 
 # TODO: decide between using citeproc-py or hand-formatting the response - maybe in a template?
