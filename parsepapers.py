@@ -98,6 +98,25 @@ def query_pubmed_idconv(session, id_, email):
     return record
 
 
+def query_crossref(session, doi, email):
+    """Perform crossref doi to metadata query
+
+    Uses Crossref's REST api to retrieve metadata for a given
+    doi. Returned metadata is a superset of the pubmed citation
+    metadata, and can be used with little transformation.
+
+    See:
+    https://www.crossref.org/documentation/retrieve-metadata/rest-api/
+
+    """
+
+    r = session.get(
+        url = f"https://api.crossref.org/works/{doi}?mailto={email}",
+    )
+
+    if r.ok:
+        pprint(r.json())
+        return r.json().get("message")
 if __name__ == "__main__":
     # Read items from a file that contains a copy-paste of citation texts from e-mail
     # Items are delimited with a blank line
@@ -134,7 +153,8 @@ if __name__ == "__main__":
             if known_ids is not None and known_ids.get("pmid") is not None:
                 pmid = known_ids.get("pmid")
                 citations.append(query_pubmed_ctxp(session, pmid))
-
+            else:
+                citations.append(query_crossref(session, doi, email))
 
     # Jinja
     env = Environment(
