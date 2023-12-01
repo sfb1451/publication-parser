@@ -1,6 +1,7 @@
 from pathlib import Path
 from pprint import pprint
 import re
+import tomllib  # 3.11
 
 from jinja2 import Environment, PackageLoader, select_autoescape
 from requests_cache import CachedSession
@@ -62,6 +63,41 @@ def query_pubmed_ctxp(session, id_):
         return r.json()
 
 
+def query_pubmed_idconv(session, id_, email):
+    """Query Pubmed ID Converter API
+
+    Returns a dict with doi, pmid, and pmcid if found. Returns None
+    otherwise.
+
+    See: https://www.ncbi.nlm.nih.gov/pmc/tools/id-converter-api/
+
+    """
+
+    payload = {
+        "tool": "mslw-paper-parser",
+        "email": email,
+        "format": "json",
+        "versions": "no",
+        "ids": id_,
+    }
+
+    r = session.get(
+        url="https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/",
+        params=payload,
+    )
+
+    rj = r.json()
+    pprint(rj)
+
+    record = rj.get("records")[0]
+    if record.get("status") == "error":
+        # query successful, but no results found for id
+        # api returns a record with the original id, plus status & errmsg fields
+        print("Pubmed idconv error:", record.get("errmsg"))
+        return
+    return record
+
+
 if __name__ == "__main__":
     # Read items from a file that contains a copy-paste of citation texts from e-mail
     # Items are delimited with a blank line
@@ -72,6 +108,11 @@ if __name__ == "__main__":
     # For now, just a set of last names
     authors_file = Path("sfb_authors.txt")
     sfb_authors = set(authors_file.read_text().rstrip().split("\n"))
+
+    # For some APIs, an e-mail is required to be polite
+    with Path("userconfig.toml").open("rb") as f:
+        user_config = tomllib.load(f)
+        email = user_config.get("user").get("email")
 
     # Cache requests to avoid spamming Pubmed
     session = CachedSession('query_cache')
@@ -84,6 +125,16 @@ if __name__ == "__main__":
 
         if pmid is not None:
             citations.append(query_pubmed_ctxp(session, pmid))
+            continue
+
+        doi = find_id(item, "doi")
+
+        if doi is not None:
+            known_ids = query_pubmed_idconv(session, doi, email)
+            if known_ids is not None and known_ids.get("pmid") is not None:
+                pmid = known_ids.get("pmid")
+                citations.append(query_pubmed_ctxp(session, pmid))
+
 
     # Jinja
     env = Environment(
