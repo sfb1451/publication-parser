@@ -119,6 +119,65 @@ def query_crossref(session, doi, email):
         return r.json().get("message")
 
 
+def check_ratings(items, close=0.75, almost=0.9):
+    """Print warning if ratings are close, return one item
+
+    If two ratings are almost the same, but the first item is a
+    preprint and the second is not, returns the latter.
+
+    If the first item found is a "peer-review" (happened for an author
+    response), it is taken out of consideration.
+
+    Otherwise, returns the first (i.e. higher-rated) item.
+
+    """
+    if len(items) < 2:
+        return items[0]
+
+    scores = tuple(item["score"] for item in items)
+    similarity = scores[1] / scores[0]
+
+    if similarity > close:
+        print(
+            f"ATTN: Similar scores ({round(similarity, 2)}) for",
+            meta_item_to_str(items[0]),
+            "and",
+            meta_item_to_str(items[1]),
+        )
+        if items[0]["type"] == "peer-review":
+            print("The former is a peer review, discarding")
+            return check_ratings(items[1:], close, almost)
+    if (
+        similarity >= almost
+        and items[0].get("subtype") == "preprint"
+        and items[1].get("type") == "journal-article"
+    ):
+        print("The former is a preprint, taking the latter as it is a journal article")
+        return items[1]
+    return items[0]
+
+
+def query_crossref_bibliographic(session, citation, email):
+    """Perform bibliographic query in crossref api"""
+
+    payload = {
+        "mailto": email,
+        "query.bibliographic": citation,
+        "rows": 3,
+    }
+
+    r = session.get(
+        url=f"https://api.crossref.org/works/",
+        params=payload,
+    )
+
+    if r.ok:
+        items = r.json().get("message").get("items")
+        best = check_ratings(items)
+        pprint(best)
+        return best
+
+
 def query_doi_org(session, doi):
     """Perform a doi query at doi.org
 
@@ -181,6 +240,10 @@ if __name__ == "__main__":
             else:
                 #citations.append(query_crossref(session, doi, email))
                 citations.append(query_doi_org(session, doi))
+
+        if doi is None and pmid is None:
+            citations.append(query_crossref_bibliographic(session, item, email))
+
 
     # Jinja
     env = Environment(
