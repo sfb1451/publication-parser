@@ -117,7 +117,6 @@ def query_pubmed_ctxp(session, id_, db):
         params=payload,
     )
 
-    pprint(r.json())
     if r.ok:
         return r.json()
 
@@ -146,7 +145,6 @@ def query_pubmed_idconv(session, id_, email):
     )
 
     rj = r.json()
-    pprint(rj)
 
     record = rj.get("records")[0]
     if record.get("status") == "error":
@@ -174,7 +172,6 @@ def query_crossref(session, doi, email):
     )
 
     if r.ok:
-        pprint(r.json())
         return r.json().get("message")
 
 
@@ -199,9 +196,9 @@ def check_ratings(items, close=0.75, almost=0.9):
     if similarity > close:
         print(
             f"ATTN: Similar scores ({round(similarity, 2)}) for",
-            meta_item_to_str(items[0]),
+            items[0].get("title")[0],
             "and",
-            meta_item_to_str(items[1]),
+            items[1].get("title")[0],
         )
         if items[0]["type"] == "peer-review":
             print("The former is a peer review, discarding")
@@ -233,7 +230,6 @@ def query_crossref_bibliographic(session, citation, email):
     if r.ok:
         items = r.json().get("message").get("items")
         best = check_ratings(items)
-        pprint(best)
         return best
 
 
@@ -258,7 +254,6 @@ def query_doi_org(session, doi, useragent=None):
     )
 
     if r.ok:
-        pprint(r.json())
         return r.json()
 
 
@@ -298,19 +293,30 @@ if __name__ == "__main__":
 
     for item in items["INF"]:
 
+        print("Processing", item.citation[:50] + "...")
         identifiers = get_identifiers(item)
 
         if (pmid := identifiers["pmid"]) is not None:
-            citations.append(query_pubmed_ctxp(throttled_session, pmid, "pubmed"))
+            print("using pmid:", pmid)
+            res = query_pubmed_ctxp(throttled_session, pmid, "pubmed")
 
         elif (pmcid := identifiers["pmcid"]) is not None:
-            citations.append(query_pubmed_ctxp(throttled_session, pmcid, "pmc"))
+            print("using pmcid", pmcid)
+            res = query_pubmed_ctxp(throttled_session, pmcid, "pmc")
 
         elif (doi := identifiers["doi"]) is not None:
-            citations.append(query_doi_org(session, doi, useragent))
+            print("using doi:", doi)
+            res = query_doi_org(session, doi, useragent)
 
         else:
-            citations.append(query_crossref_bibliographic(session, item, email))
+            print("Performing bibliographic query")
+            res = query_crossref_bibliographic(session, item, email)
+
+        if res is not None:
+            ttl = res["title"] if isinstance(res["title"], str) else res["title"][0]
+        else:
+            ttl = None
+        print("Got", ttl)
 
     # Jinja
     env = Environment(
