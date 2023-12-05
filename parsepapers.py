@@ -108,7 +108,7 @@ def query_pubmed_ctxp(session, id_):
 
     r = session.get(
         url="https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/",
-        headers={"user-agent": "mslw-paper-parser/0.0.1"},
+        headers={"user-agent": "sfbPublicationParser/0.1"},
         params=payload,
     )
 
@@ -131,7 +131,7 @@ def query_pubmed_idconv(session, id_, email):
     """
 
     payload = {
-        "tool": "mslw-paper-parser",
+        "tool": "sfbPublicationParser",
         "email": email,
         "format": "json",
         "versions": "no",
@@ -235,7 +235,7 @@ def query_crossref_bibliographic(session, citation, email):
         return best
 
 
-def query_doi_org(session, doi):
+def query_doi_org(session, doi, useragent=None):
     """Perform a doi query at doi.org
 
     Queries doi.org about a given doi, using content negotiation to
@@ -246,12 +246,14 @@ def query_doi_org(session, doi):
 
     """
 
+    headers = {"Accept": "application/vnd.citationstyles.csl+json"}
+    if useragent is not None:
+        headers["User-Agent"] = useragent
+
     r = session.get(
-        url = f"https://doi.org/{doi}",
-        headers={"Accept": "application/vnd.citationstyles.csl+json"},
+        url=f"https://doi.org/{doi}",
+        headers=headers,
     )
-    # todo: include mailto header so that crossref lets us into polite pool
-    # https://www.crossref.org/documentation/retrieve-metadata/content-negotiation/
 
     if r.ok:
         pprint(r.json())
@@ -273,6 +275,13 @@ if __name__ == "__main__":
     with Path("userconfig.toml").open("rb") as f:
         user_config = tomllib.load(f)
         email = user_config.get("user").get("email")
+
+    # User-agent string with mailto:, for use with crossref
+    # https://api.crossref.org/swagger-ui/index.html
+    appname = "sfbPublicationParser"
+    appver = "0.1"
+    comment = f"https://github.com/sfb1451/publication-parser; mailto: {email}"
+    useragent = f"{appname}/{appver} ({comment})"
 
     # Cache requests to avoid spamming Pubmed
     session = CachedSession('query_cache')
@@ -296,7 +305,7 @@ if __name__ == "__main__":
                 citations.append(query_pubmed_ctxp(session, pmid))
             else:
                 #citations.append(query_crossref(session, doi, email))
-                citations.append(query_doi_org(session, doi))
+                citations.append(query_doi_org(session, doi, useragent))
 
         if doi is None and pmid is None:
             citations.append(query_crossref_bibliographic(session, item, email))
