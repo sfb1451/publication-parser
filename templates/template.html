@@ -7,12 +7,12 @@
 
 <body>
 
-  {% for citation in citations %}
+  {% for publication in publications %}
     <p>
-    {% for author in citation.get("author") %}
+    {% for author in publication.get("author") %}
       {% if author.get("family") in sfb_authors %}<b>{% endif %}{{ author.get("given") }} {{ author.get("family") }}, {% if author.get("family") in sfb_authors %}</b>{% endif %}
     {% endfor %}
-    {{ citation.get("title") }}, {{ citation.get("container-title") }} {{ citation.get("issued").get("date-parts")[0][0] }}
+    {{ publication.get("title") }}, {{ publication.get("container-title") }} {{ publication.get("issued").get("date-parts")[0][0] }}
     </p>
   {%+ endfor %}
 

@@ -21,6 +21,31 @@ class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
     pass
 
 
+class Publication:
+    """Stores and returns publication metadata
+
+    This class smooths out the inconsistencies between csl json and
+    crossref json (item vs list), and can be used to do things that
+    are harder to do in a template.
+
+    """
+
+    def __init__(self, d, comment):
+        self.metadata = d
+        self.comment = comment
+
+    def get(self, key):
+        """Flattens crossref 1-item lists"""
+        if key in ("title", "container-title"):
+            res = self.metadata.get(key)
+            if isinstance(res, list) and len(res) == 1:
+                return res[0]
+            else:
+                return res
+        else:
+            return self.metadata.get(key)
+
+
 def find_id(citation_text, idtype="pmid"):
     """Find an identifier in a citation text
 
@@ -289,10 +314,9 @@ if __name__ == "__main__":
     throttled_session = CachedLimiterSession(cache_name="pubmed_cache", per_second=3)
     session = CachedSession("query_cache")
 
-    citations = []
+    publications = []
 
     for item in items["INF"]:
-
         print("Processing", item.citation[:50] + "...")
         identifiers = get_identifiers(item)
 
@@ -312,11 +336,13 @@ if __name__ == "__main__":
             print("Performing bibliographic query")
             res = query_crossref_bibliographic(session, item, email)
 
-        if res is not None:
-            ttl = res["title"] if isinstance(res["title"], str) else res["title"][0]
-        else:
-            ttl = None
-        print("Got", ttl)
+        if res is None:
+            print("(!) Got", res)
+            continue
+
+        publication = Publication(res, comment=item.comment)
+        print("Got", publication.get("title"))
+        publications.append(publication)
 
     # Jinja
     env = Environment(
@@ -327,5 +353,5 @@ if __name__ == "__main__":
     )
     template = env.get_template("template.html")
     Path("publications.html").write_text(
-        template.render(citations=citations, sfb_authors=sfb_authors)
+        template.render(publications=publications, sfb_authors=sfb_authors)
     )
