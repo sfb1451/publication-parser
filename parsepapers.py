@@ -4,7 +4,18 @@ import re
 import tomllib  # 3.11
 
 from jinja2 import Environment, PackageLoader, select_autoescape
-from requests_cache import CachedSession
+from requests import Session
+from requests_cache import CachedSession, CacheMixin
+from requests_ratelimiter import LimiterMixin
+
+
+class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
+    """Session class with caching and rate-limiting behavior. Accepts
+    arguments for both LimiterSession and CachedSession.
+
+    """
+
+    pass
 
 
 def find_id(citation_text, idtype="pmid"):
@@ -111,9 +122,6 @@ def query_pubmed_ctxp(session, id_):
         headers={"user-agent": "sfbPublicationParser/0.1"},
         params=payload,
     )
-
-    # todo: back off on error?
-    # we don't want to sleep when caching, only for real queries
 
     pprint(r.json())
     if r.ok:
@@ -283,8 +291,10 @@ if __name__ == "__main__":
     comment = f"https://github.com/sfb1451/publication-parser; mailto: {email}"
     useragent = f"{appname}/{appver} ({comment})"
 
-    # Cache requests to avoid spamming Pubmed
-    session = CachedSession('query_cache')
+    # Have two cached requests session, one additionally throttled
+    # pubmed suggests throttling to max 3 per second, crossref can take more
+    throttled_session = CachedLimiterSession(cache_name="pubmed_cache", per_second=3)
+    session = CachedSession("query_cache")
 
     citations = []
 
@@ -293,16 +303,16 @@ if __name__ == "__main__":
         pmid = find_id(item, "pmid")
 
         if pmid is not None:
-            citations.append(query_pubmed_ctxp(session, pmid))
+            citations.append(query_pubmed_ctxp(throttled_session, pmid))
             continue
 
         doi = find_id(item, "doi")
 
         if doi is not None:
-            known_ids = query_pubmed_idconv(session, doi, email)
+            known_ids = query_pubmed_idconv(throttled_session, doi, email)
             if known_ids is not None and known_ids.get("pmid") is not None:
                 pmid = known_ids.get("pmid")
-                citations.append(query_pubmed_ctxp(session, pmid))
+                citations.append(query_pubmed_ctxp(throttled_session, pmid))
             else:
                 #citations.append(query_crossref(session, doi, email))
                 citations.append(query_doi_org(session, doi, useragent))
