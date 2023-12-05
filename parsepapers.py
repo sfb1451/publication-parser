@@ -28,6 +28,63 @@ def find_id(citation_text, idtype="pmid"):
     return m.group(1) if m is not None else m
 
 
+def id_from_url(s, idtype):
+    """Find an identifier in a URL
+
+    Journal links often include an identifier (doi, pmid, pmcid) in
+    their components, but url patterns differ. This function tries to
+    match patterns for several known publishers, as well as pubmed and
+    pubmed central.
+
+    Although the patterns are very similar between publishers, there
+    are differences in the number of components that are parts of the
+    doi suffix versus parts of journal-specific url (a suffix can
+    contain slashes) - compare oup and mit press for example. To avoid
+    spurious matches, patterns are per-publisher.
+
+    Only biorxiv doi pattern is based on their FAQ, others were
+    created by inspecting several available URLs. Pubmed (central)
+    seems the most obvious.
+
+    """
+    patterns = {
+        "doi": [
+            r"biorxiv\.org/content/(10\.\d{4,6}/\d{6})",  # biorxiv pre 2019-10-11
+            r"biorxiv\.org/content/(10\.\d{4,6}/\d{4}\.\d{2}\.\d{2}\.\d{6})",  # biorxiv
+            r"medrxiv\.org/content/(10\.\d{4,6}/\d{4}\.\d{2}\.\d{2}\.\d{8})",  # medrxiv
+            r"link\.springer\.com/(?:content|article)(?:/pdf)?/(10\.\d+/s[\d\-]+)",  # springer
+            r"onlinelibrary\.wiley\.com/doi(?:/e?pdf|/epub|/full)?/(10\.\d+/[a-z]+\.\d+)",  # wiley
+            r"embopress\.org/doi(?:/e?pdf|/epub|/full)?/(10\.\d+/[a-z]+\.\d+)",  # embo press
+            r"science\.org/doi(?:/e?pdf|/epub|/full)?/(10\.\d+/[a-z]+\.\w+)",  # science
+            r"sagepub\.com/doi(?:/e?pdf|/epub|/full)?/(10\.\d+/\d+)",  # sage
+            r"academic\.oup\.com/\w+/[\w\-]+/doi/(10\.\d+/\w+/\w+)",  # oup
+            r"direct.mit.edu/\w+/[\w\-]+/doi/(10\.\d+/\w+/)",  # mit press
+            r"ahajournals\.org/doi(?:/e?pdf|/epub|/full)?/(10\.\d+/\w+\.\d+\.\d+)",  # aha
+            r"frontiersin\.org/articles/(10\.\d+/\w+\.\d+\.\d+)",  # frontiers
+            r"pubs\.acs\.org/doi/(10\.\d+/\w+\.\w+(?:\.\w+)?)",  # acs
+        ],
+        "pmcid": [r"ncbi\.nlm\.nih\.gov/pmc/articles/PMC(\d+)"],
+        "pmid": [r"pubmed\.ncbi\.nlm\.nih\.gov/(\d+)"],
+    }
+
+    for pat in patterns[idtype.lower()]:
+        m = re.search(pat, s)
+        if m is not None:
+            return m.group(1)
+
+
+def get_identifiers(entry):
+    """Find identifiers in citation and/or url"""
+    identifiers = {}
+    for id_ in ("doi", "pmid", "pmcid"):
+        # prefer "canonical" form included in citation
+        identifiers[id_] = find_id(entry.citation, id_)
+        if identifiers[id_] is None:
+            # fall back to url patterns
+            identifiers[id_] = id_from_url(entry.url, id_)
+    return identifiers
+
+
 def read_file(fp):
     """Read file, splitting on blank lines"""
     items = re.split(r"\n{2,}", fp.read_text().strip())
