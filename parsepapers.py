@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 from pprint import pprint
 import re
@@ -7,6 +8,8 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 from requests import Session
 from requests_cache import CachedSession, CacheMixin
 from requests_ratelimiter import LimiterMixin
+
+from read_input import read_file
 
 
 class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
@@ -96,17 +99,12 @@ def get_identifiers(entry):
     return identifiers
 
 
-def read_file(fp):
-    """Read file, splitting on blank lines"""
-    items = re.split(r"\n{2,}", fp.read_text().strip())
-    return [i.replace("\n", " ") for i in items]
-
-
-def query_pubmed_ctxp(session, id_):
+def query_pubmed_ctxp(session, id_, db):
     """Query Pubmed Literature Citation Exporter
 
-    Obtains a CSL json for a given PubMed id. Returns None if the
-    response is not ok.
+    Obtains a CSL json for a given PubMed or PMC id. The db argument
+    needs to be set to "pubmed" or "pmc" respectively. Returns None if
+    the response is not ok.
 
     See https://api.ncbi.nlm.nih.gov/lit/ctxp/
 
@@ -114,7 +112,7 @@ def query_pubmed_ctxp(session, id_):
     payload = {"format": "csl", "contenttype": "json", "id": id_}
 
     r = session.get(
-        url="https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/",
+        url=f"https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/{db.lower()}/",
         headers={"user-agent": "sfbPublicationParser/0.1"},
         params=payload,
     )
@@ -265,10 +263,14 @@ def query_doi_org(session, doi, useragent=None):
 
 
 if __name__ == "__main__":
-    # Read items from a file that contains a copy-paste of citation texts from e-mail
+    parser = argparse.ArgumentParser()
+    parser.add_argument("infile", type=Path)
+    args = parser.parse_args()
+
+    # Read items from a file that contains a copy-paste from word
+    # Items contain citation, optional comment, and url, one per line
     # Items are delimited with a blank line
-    sample_input = Path("sample.txt")
-    items = read_file(sample_input)
+    items = read_file(args.infile)
 
     # Read authors who are SFB authors, and should be displayed in bold
     # For now, just a set of last names
@@ -294,25 +296,20 @@ if __name__ == "__main__":
 
     citations = []
 
-    for item in items:
-        pmid = find_id(item, "pmid")
+    for item in items["INF"]:
 
-        if pmid is not None:
-            citations.append(query_pubmed_ctxp(throttled_session, pmid))
-            continue
+        identifiers = get_identifiers(item)
 
-        doi = find_id(item, "doi")
+        if (pmid := identifiers["pmid"]) is not None:
+            citations.append(query_pubmed_ctxp(throttled_session, pmid, "pubmed"))
 
-        if doi is not None:
-            known_ids = query_pubmed_idconv(throttled_session, doi, email)
-            if known_ids is not None and known_ids.get("pmid") is not None:
-                pmid = known_ids.get("pmid")
-                citations.append(query_pubmed_ctxp(throttled_session, pmid))
-            else:
-                # citations.append(query_crossref(session, doi, email))
-                citations.append(query_doi_org(session, doi, useragent))
+        elif (pmcid := identifiers["pmcid"]) is not None:
+            citations.append(query_pubmed_ctxp(throttled_session, pmcid, "pmc"))
 
-        if doi is None and pmid is None:
+        elif (doi := identifiers["doi"]) is not None:
+            citations.append(query_doi_org(session, doi, useragent))
+
+        else:
             citations.append(query_crossref_bibliographic(session, item, email))
 
     # Jinja

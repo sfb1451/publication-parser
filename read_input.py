@@ -1,10 +1,4 @@
-import argparse
 from collections import namedtuple
-from pathlib import Path
-
-parser = argparse.ArgumentParser()
-parser.add_argument("path", type=Path)
-args = parser.parse_args()
 
 Entry = namedtuple("Entry", ["citation", "url", "comment"], defaults=[None, None])
 
@@ -62,11 +56,3 @@ def process_buffer(buf, n=None):
     else:
         print(buf)
         raise ValueError(f"Too many lines for a publication on line {n}")
-
-
-if __name__ == "__main__":
-    entries = read_file(args.path)
-
-    for entry_list in entries.values():
-        for entry in entry_list:
-            print(entry.url)
