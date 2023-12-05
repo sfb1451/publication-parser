@@ -287,10 +287,10 @@ if __name__ == "__main__":
     parser.add_argument("infile", type=Path)
     args = parser.parse_args()
 
-    # Read items from a file that contains a copy-paste from word
-    # Items contain citation, optional comment, and url, one per line
-    # Items are delimited with a blank line
-    items = read_file(args.infile)
+    # Read entries from a file that contains a tweaked copy-paste from word.
+    # Entries contain citation, optional comment, and url, one per line.
+    # Entries are delimited with a blank line.
+    raw_data = read_file(args.infile)
 
     # Read authors who are SFB authors, and should be displayed in bold
     # For now, just a set of last names
@@ -316,33 +316,34 @@ if __name__ == "__main__":
 
     publications = []
 
-    for item in items["INF"]:
-        print("Processing", item.citation[:50] + "...")
-        identifiers = get_identifiers(item)
+    for project, entries in raw_data.items():
+        for entry in entries:
+            print("Processing", entry.citation[:50] + "...")
+            identifiers = get_identifiers(entry)
 
-        if (pmid := identifiers["pmid"]) is not None:
-            print("using pmid:", pmid)
-            res = query_pubmed_ctxp(throttled_session, pmid, "pubmed")
+            if (pmid := identifiers["pmid"]) is not None:
+                print("using pmid:", pmid)
+                res = query_pubmed_ctxp(throttled_session, pmid, "pubmed")
 
-        elif (pmcid := identifiers["pmcid"]) is not None:
-            print("using pmcid", pmcid)
-            res = query_pubmed_ctxp(throttled_session, pmcid, "pmc")
+            elif (pmcid := identifiers["pmcid"]) is not None:
+                print("using pmcid", pmcid)
+                res = query_pubmed_ctxp(throttled_session, pmcid, "pmc")
 
-        elif (doi := identifiers["doi"]) is not None:
-            print("using doi:", doi)
-            res = query_doi_org(session, doi, useragent)
+            elif (doi := identifiers["doi"]) is not None:
+                print("using doi:", doi)
+                res = query_doi_org(session, doi, useragent)
 
-        else:
-            print("Performing bibliographic query")
-            res = query_crossref_bibliographic(session, item, email)
+            else:
+                print("Performing bibliographic query")
+                res = query_crossref_bibliographic(session, entry, email)
 
-        if res is None:
-            print("(!) Got", res)
-            continue
+            if res is None:
+                print("(!) Got", res)
+                continue
 
-        publication = Publication(res, comment=item.comment)
-        print("Got", publication.get("title"))
-        publications.append(publication)
+            publication = Publication(res, comment=entry.comment)
+            print("Got", publication.get("title"))
+            publications.append(publication)
 
     # Jinja
     env = Environment(
