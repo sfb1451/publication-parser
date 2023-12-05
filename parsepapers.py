@@ -111,11 +111,7 @@ def query_pubmed_ctxp(session, id_):
     See https://api.ncbi.nlm.nih.gov/lit/ctxp/
 
     """
-    payload = {
-        "format": "csl",
-        "contenttype": "json",
-        "id": id_
-    }
+    payload = {"format": "csl", "contenttype": "json", "id": id_}
 
     r = session.get(
         url="https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/",
@@ -176,7 +172,7 @@ def query_crossref(session, doi, email):
     """
 
     r = session.get(
-        url = f"https://api.crossref.org/works/{doi}?mailto={email}",
+        url=f"https://api.crossref.org/works/{doi}?mailto={email}",
     )
 
     if r.ok:
@@ -299,7 +295,6 @@ if __name__ == "__main__":
     citations = []
 
     for item in items:
-
         pmid = find_id(item, "pmid")
 
         if pmid is not None:
@@ -314,12 +309,11 @@ if __name__ == "__main__":
                 pmid = known_ids.get("pmid")
                 citations.append(query_pubmed_ctxp(throttled_session, pmid))
             else:
-                #citations.append(query_crossref(session, doi, email))
+                # citations.append(query_crossref(session, doi, email))
                 citations.append(query_doi_org(session, doi, useragent))
 
         if doi is None and pmid is None:
             citations.append(query_crossref_bibliographic(session, item, email))
-
 
     # Jinja
     env = Environment(
@@ -332,10 +326,3 @@ if __name__ == "__main__":
     Path("publications.html").write_text(
         template.render(citations=citations, sfb_authors=sfb_authors)
     )
-
-
-# TODO: decide between using citeproc-py or hand-formatting the response - maybe in a template?
-# citeproc-py process is a bit involved and focused on creating standard bibliographies (think LaTeX document)
-# and we probably want to play with formatting (SFB authors in bold, etc).
-#
-# a possible alternative with pubmed is to ask for a formatted citation e.g. in AMA or MLA format
