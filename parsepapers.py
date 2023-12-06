@@ -1,4 +1,5 @@
 import argparse
+import json
 from pathlib import Path
 from pprint import pprint
 import logging
@@ -335,6 +336,10 @@ if __name__ == "__main__":
         print("\n--- Could not retrieve metadata for some publications ---\n")
         for entry in unidentified:
             print(entry, "\n")
+
+    # temporary copy
+    with open("tmpdata.json", "w") as jf:
+        json.dump(publications, jf)
 
     # Jinja
     env = Environment(
