@@ -22,31 +22,6 @@ class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
     pass
 
 
-class Publication:
-    """Stores and returns publication metadata
-
-    This class smooths out the inconsistencies between csl json and
-    crossref json (item vs list), and can be used to do things that
-    are harder to do in a template.
-
-    """
-
-    def __init__(self, d, comment):
-        self.metadata = d
-        self.comment = comment
-
-    def get(self, key):
-        """Flattens crossref 1-item lists"""
-        if key in ("title", "container-title"):
-            res = self.metadata.get(key)
-            if isinstance(res, list) and len(res) == 1:
-                return res[0]
-            else:
-                return res
-        else:
-            return self.metadata.get(key)
-
-
 def find_id(citation_text, idtype="pmid"):
     """Find an identifier in a citation text
 
@@ -338,16 +313,22 @@ if __name__ == "__main__":
 
             else:
                 print("Performing bibliographic query")
-                res = query_crossref_bibliographic(session, entry, email)
+                bib_res = query_crossref_bibliographic(session, entry, email)
+                # make another query, avoid translating crossref-api-message
+                if bib_res is not None and bib_res.get("DOI") is not None:
+                    print(f"using doi: {bib_res.get('DOI')} from bibliographic")
+                    res = query_doi_org(session, bib_res.get("DOI"), useragent)
+                else:
+                    res = None
 
             if res is None:
                 logging.warning("Cound not retrieve metadata (!)")
                 unidentified.append(entry)
                 continue
 
-            publication = Publication(res, comment=entry.comment)
-            print("Got", publication.get("title"))
-            publications.append(publication)
+            print("Got", res.get("title"))
+            res["sfb_comment"] = entry.comment
+            publications.append(res)
 
     # Report on things we could not identify, if any
     if len(unidentified) > 0:
