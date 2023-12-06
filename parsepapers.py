@@ -1,4 +1,5 @@
 import argparse
+from collections import defaultdict
 import json
 from pathlib import Path
 from pprint import pprint
@@ -292,7 +293,7 @@ if __name__ == "__main__":
     throttled_session = CachedLimiterSession(cache_name="pubmed_cache", per_second=3)
     session = CachedSession("query_cache")
 
-    publications = []
+    publications = defaultdict(list)
     unidentified = []
 
     for project, entries in raw_data.items():
@@ -329,7 +330,7 @@ if __name__ == "__main__":
 
             print("Got", res.get("title"))
             res["sfb_comment"] = entry.comment
-            publications.append(res)
+            publications[project].append(res)
 
     # Report on things we could not identify, if any
     if len(unidentified) > 0:
@@ -350,5 +351,5 @@ if __name__ == "__main__":
     )
     template = env.get_template("template.html")
     Path("publications.html").write_text(
-        template.render(publications=publications, sfb_authors=sfb_authors)
+        template.render(pubdata=publications, sfb_authors=sfb_authors)
     )
