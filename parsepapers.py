@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 from pprint import pprint
+import logging
 import re
 import tomllib  # 3.11
 
@@ -220,7 +221,8 @@ def check_ratings(items, close=0.75, almost=0.9):
 
     if similarity > close:
         print(
-            f"ATTN: Similar scores ({round(similarity, 2)}) for",
+            f"Bibliographic query: similar scores ({round(similarity, 2)})",
+            "for",
             items[0].get("title")[0],
             "and",
             items[1].get("title")[0],
@@ -315,6 +317,7 @@ if __name__ == "__main__":
     session = CachedSession("query_cache")
 
     publications = []
+    unidentified = []
 
     for project, entries in raw_data.items():
         for entry in entries:
@@ -338,12 +341,19 @@ if __name__ == "__main__":
                 res = query_crossref_bibliographic(session, entry, email)
 
             if res is None:
-                print("(!) Got", res)
+                logging.warning("Cound not retrieve metadata (!)")
+                unidentified.append(entry)
                 continue
 
             publication = Publication(res, comment=entry.comment)
             print("Got", publication.get("title"))
             publications.append(publication)
+
+    # Report on things we could not identify, if any
+    if len(unidentified) > 0:
+        print("\n--- Could not retrieve metadata for some publications ---\n")
+        for entry in unidentified:
+            print(entry, "\n")
 
     # Jinja
     env = Environment(
