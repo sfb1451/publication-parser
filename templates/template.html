@@ -9,11 +9,13 @@
 
   {% for publication in publications %}
     <p>
-    {% for author in publication.get("author") %}
-      {% if author.get("family") in sfb_authors %}<b>{% endif %}{{ author.get("given") }} {{ author.get("family") }}, {% if author.get("family") in sfb_authors %}</b>{% endif %}
-    {% endfor %}
-    {{ publication.get("title") }}, {{ publication.get("container-title") }} {{ publication.get("issued").get("date-parts")[0][0] }}
+      {%+ for author in publication.get("author") %}
+        {% if author.get("family") in sfb_authors %}<b>{% endif %}{{ author.get("given") }} {{ author.get("family") }}{% if author.get("family") in sfb_authors %}</b>{% endif %}{% if not loop.last %}, {% else %}. {% endif %}
+      {% endfor -%}
+      {{ publication.get("title") }}. {% if publication.get("container-title") != [] %}<i>{{ publication.get("container-title") }}</i>{% endif %} ({{ publication.get("issued").get("date-parts")[0][0] }})
+      <a href="https://doi.org/{{ publication.get('DOI') }}">https://doi.org/{{ publication.get('DOI') }}</a>
+      {% if publication.get("sfb_comment", False) %}<small>{{ publication.get("sfb_comment") }}</small>{% endif %}
     </p>
-  {%+ endfor %}
+  {% endfor %}
 
 </body>
