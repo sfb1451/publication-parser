@@ -1,0 +1,69 @@
+* Publication parser
+
+This repository contains code for generating an html publication list based on unique identifiers.
+It can be used with a loosely defined input.
+
+** Running
+
+*** Installation
+
+Create a virtual environment using your preferred method, and install required packages.
+
+#+begin_src bash
+  pip install -r requirements.txt
+#+end_src
+
+*** Configuration
+
+Some APIs suggest including e-mail address in queries (headers or params), or require it to get into a polite pool.
+The e-mail will be read from a configuration file.
+Create =userconfig.toml= with the following content and save it in the code directory:
+
+#+begin_src toml
+[user]
+  email = "youremail@example.com"
+#+end_src
+
+SFB project members are highlighted in the generated list.
+Matching is currently perform on a last name basis.
+Create =sfb-authors.txt= with one name per line (like below), and save it in the code directory:
+
+#+begin_src
+  Doe
+  Mustermann
+#+end_src
+
+A script for generating the SFB member list by reading the SFB website is in =scrape_names.py=,
+but some names need to be edited or added manually afterwards.
+
+*** Usage
+
+Run the =parsepapers.py= script with the input file (publication info) as the only argument.
+
+#+begin_src bash
+  python parsepapers.py publications.txt
+#+end_src
+
+Note: some shortcuts were made, and currently we rely on working directory being the code directory.
+The code will generate the following files in the same directory:
+
+- Html output will be written to =publications.html=.
+- structured publication data will be written to =tmpdata.json=
+- =query_cache.sqlite= and =pubmed_cache.sqlite= will be created for caching get requests
+
+** Input format specification
+
+The input file is a text file composed of blocks (paragraphs) separated by empty lines.
+
+- Sections (projects) are defined by a single line, starting with =*= and containing a project name.
+- A publication is described by a block of up to 3 lines:
+  - First line is a free-form citation and / or an identifier.
+  - Lines 2 and 3 may contain URL or comment (order does not matter)
+
+Example:
+
+... TBC
+
+** Implementation details
+
+... TBC
