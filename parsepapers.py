@@ -97,7 +97,7 @@ def id_from_url(s, idtype):
             r"science\.org/doi(?:/e?pdf|/epub|/full)?/(10\.\d+/[a-z]+\.\w+)",  # science
             r"sagepub\.com/doi(?:/e?pdf|/epub|/full)?/(10\.\d+/\d+)",  # sage
             r"academic\.oup\.com/\w+/[\w\-]+/doi/(10\.\d+/\w+/\w+)",  # oup
-            r"direct.mit.edu/\w+/[\w\-]+/doi/(10\.\d+/\w+/)",  # mit press
+            r"direct.mit.edu/\w+/[\w\-]+/doi/(10\.\d+/\w+)",  # mit press
             r"ahajournals\.org/doi(?:/e?pdf|/epub|/full)?/(10\.\d+/\w+\.\d+\.\d+)",  # aha
             r"frontiersin\.org/articles/(10\.\d+/\w+\.\d+\.\d+)",  # frontiers
             r"pubs\.acs\.org/doi/(10\.\d+/\w+\.\w+(?:\.\w+)?)",  # acs
