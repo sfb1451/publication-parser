@@ -116,9 +116,48 @@ as long as they are given in the following formats:
 Additionally, the following URL patterns (2nd / 3rd line) will be recognized:
 
 - =pubmed.ncbi.nlm.nih.gov/12345678= (PubMed id)
-- =ncbi.nlm.nih.gov/pmc/articles/PMC12345678"= (PMC id)
+- =ncbi.nlm.nih.gov/pmc/articles/PMC12345678= (PMC id)
 - several content url patterns from known publishers (doi)
 
-** Implementation details
+** Design principles & implementation details
 
-... TBC
+*** Identifiers are key
+
+All formatted citations are generated based on structured metadata obtained from API queries.
+Provided input (citation text, content URL) are parsed with regular expressions to extract identifiers.
+Only if an identifier cannot be found, the citation text is used to perform a bibliographic query with Crossref.
+This means that the citation text or content URL are never used directly.
+
+The regex patterns used for matching content url (which often contains a doi in some of its parts)
+are not perfect, but should sufficiently cover link formats used by several large publishers.
+
+The input format and processing approach (pattern matching combined with bibliographic query fallback)
+was designed to allow working with historic SFB data
+(largely unstructured citations accompanied by different kinds of content URLs)
+while allowing easy additions of new citations with identifiers only.
+
+*** Structured metadata
+
+[[https://citationstyles.org/][Citation Style Language]] is used as the internal representation of structured metadata.
+CSL+json is the preferred API response format.
+
+*** APIs
+
+If several identifiers can be found for a citation item, only one will be used (with a matching API),
+with the following priority: pmid, pmcid, doi.
+
+The script uses the following APIs:
+- [[https://api.ncbi.nlm.nih.gov/lit/ctxp/][PubMed Literature Citation Exporter]] (for pmid, pmcid),
+- https://doi.org with [[https://citation.crosscite.org/docs.html][content negotiation]] (for doi)
+- [[https://www.crossref.org/documentation/retrieve-metadata/rest-api/][Crossref REST API]] (for bibliographic queries)
+
+A bibliographic query requires additional heuristics to disambiguate some cases when e.g. preprint and published article
+score similarly for a given citation.
+Its result is not available in csl directly, so the doi included in the result is then used for another query.
+
+API requests are implemented as basic GET requests, following documentation and examples from respective services.
+The requests_cache and requests_ratelimiter libraries are used to cache and throttle requests, respectively.
+
+*** Results formatting
+
+A Jinja template is used to generate a formatted html page.
