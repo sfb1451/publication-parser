@@ -101,7 +101,7 @@ Each of them contains an identifier that would be picked up.
 
 *** Recognized identifiers
 
-The script recognizes the following unique identifiers for articles,
+The script recognizes the following unique identifiers for articles (when included on the 1st line),
 as long as they are given in the following formats:
 
 - PubMed ID
@@ -115,8 +115,8 @@ as long as they are given in the following formats:
 
 Additionally, the following URL patterns (2nd / 3rd line) will be recognized:
 
-- =rpubmed\.ncbi\.nlm\.nih\.gov/(\d+)= (PubMed id)
-- =r"ncbi\.nlm\.nih\.gov/pmc/articles/PMC(\d+)"= (PMC id)
+- =pubmed.ncbi.nlm.nih.gov/12345678= (PubMed id)
+- =ncbi.nlm.nih.gov/pmc/articles/PMC12345678"= (PMC id)
 - several content url patterns from known publishers (doi)
 
 ** Implementation details
