@@ -51,18 +51,73 @@ The code will generate the following files in the same directory:
 - structured publication data will be written to =tmpdata.json=
 - =query_cache.sqlite= and =pubmed_cache.sqlite= will be created for caching get requests
 
-** Input format specification
+** Input data
+
+*** Format specification
 
 The input file is a text file composed of blocks (paragraphs) separated by empty lines.
 
-- Sections (projects) are defined by a single line, starting with =*= and containing a project name.
+- The file is divided into sections, corresponding to projects.
+  Sections are defined by a single line, starting with =*= and containing a project name.
 - A publication is described by a block of up to 3 lines:
-  - First line is a free-form citation and / or an identifier.
-  - Lines 2 and 3 may contain URL or comment (order does not matter)
+  - First line is a free-form citation (ideally, but not necessarily including an identifier), or the identifier alone.
+  - Lines 2 and 3 are an identifier and comment, both optional, and in a freely chosen order:
+    - if a line starts with "http(s)", it will be treated as URL
+      (if an identifier is not found in the first line, the URL will be used to find an identifier by pattern matching)
+    - otherwise it will be treated as a comment, to be displayed in the generated page (after generated citation)
+    - there can be at most one url and one comment
 
-Example:
+Note that it is sufficient to only include the identifier (i.e. *less is more*) - see below for identifier formats.
+Anything else (URL, citation text) will be used only to find the identifier
+(by pattern matching, or by searching crossref database).
 
-... TBC
+Such file can be generated with minimal hand-editing from a copy-paste of an existing word document,
+but it should be just as easy to edit "by hand" from scratch.
+
+*** Example
+
+Example below describes 5 different publications from 2 projects.
+Each of them contains an identifier that would be picked up.
+
+#+begin_src
+  * Project XYZ
+
+  John Doe, Max Mustermann, Some Paper Title, Some Journal (2023)
+  in collaboration with project QWE
+  https://pubmed.ncbi.nlm.nih.gov/123456
+
+  Mustermann M., Doe J., Some Other Paper Title, Some Other Journal (2023) doi: 10.nnnnnn/example1
+
+  PMID: 123123
+  in collaboration with ZYX
+
+  * Project ABC
+
+  https://doi.org/10.nnnnnn/example2
+
+  PMCID: 654321
+
+#+end_src
+
+*** Recognized identifiers
+
+The script recognizes the following unique identifiers for articles,
+as long as they are given in the following formats:
+
+- PubMed ID
+  - =PMID: 12345678=
+- PubMed Central ID
+  - =PMCID: 12345678=
+- DOI
+  - =doi: 10.nnnnnn/example=
+  - =https://doi.org/10.nnnnnn/example=
+  - =https://dx.doi.org/10.nnnnnn/example=
+
+Additionally, the following URL patterns (2nd / 3rd line) will be recognized:
+
+- =rpubmed\.ncbi\.nlm\.nih\.gov/(\d+)= (PubMed id)
+- =r"ncbi\.nlm\.nih\.gov/pmc/articles/PMC(\d+)"= (PMC id)
+- several content url patterns from known publishers (doi)
 
 ** Implementation details
 
